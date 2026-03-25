@@ -29,5 +29,6 @@ fn test_fail_to_write_dir() {
     let temp_path = temp_dir.path();
 
     std::fs::set_permissions(&temp_path, std::fs::Permissions::from_mode(0o577)).unwrap();
-    init::call(temp_path).expect_err("init should fail if the HEAD file is invalid");
+    init::call(temp_path).expect_err("init should fail if permission denied");
+    std::fs::set_permissions(&temp_path, std::fs::Permissions::from_mode(0o777)).unwrap();
 }
