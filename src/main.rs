@@ -11,7 +11,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Init { }
+    Init { },
+    HashObject(commands::hash_object::HashObjectArgs)
 }
 
 fn main() {
@@ -23,6 +24,13 @@ fn main() {
                 Ok(_) => (),
                 Err(e) => eprintln!("Error: {}", e),
             }
-        }
+        },
+        Commands::HashObject(args) => {
+            match commands::hash_object::call(args) {
+                Ok(obj_hash) => println!("{}", obj_hash.hash),
+                Err(e) => eprintln!("Error: {}", e),
+            }
+        },
+
     }
 }
