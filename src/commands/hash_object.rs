@@ -1,5 +1,7 @@
-use crate::objects::object_hash::{ObjectType, ObjectHash};
+use crate::commands::CliConfig;
+use crate::objects::object_hash::{ObjectHash};
 use crate::objects::{store};
+use crate::objects::object::ObjectType;
 
 #[derive(clap::Args, Clone)]
 pub struct HashObjectArgs {
@@ -11,16 +13,13 @@ pub struct HashObjectArgs {
 
     // File to hash (or stdin if not specified)
     pub file: Option<String>,
-
-    #[arg(short = 'C', default_value = ".")]
-    pub work_dir: String,
 }
-pub fn call(args : &HashObjectArgs) -> anyhow::Result<ObjectHash> {
+pub fn call(config: &CliConfig, args : &HashObjectArgs) -> anyhow::Result<ObjectHash> {
     if args.file.is_none() {
         return Err(anyhow::anyhow!("No file specified and stdin is not yet supported"));
     }
 
-    let work_dir = std::path::Path::new(&args.work_dir);
+    let work_dir = std::path::Path::new(&config.work_dir);
     let path = std::path::Path::join(work_dir, args.file.as_ref().unwrap());
     let mut file = std::fs::File::open(path)?;
     let size = file.metadata()?.len() as usize;

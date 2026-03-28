@@ -1,6 +1,7 @@
 use std::io::{Read, Write};
 use flate2::read::ZlibDecoder;
-use crate::objects::object_hash::{ObjectHash, ObjectType};
+use crate::objects::object::ObjectType;
+use crate::objects::object_hash::{ObjectHash};
 
 pub(crate) const DEFAULT_OBJ_PATH : &str = ".git/objects";
 
@@ -41,11 +42,17 @@ pub fn load(reader : &mut impl Read, writer : &mut impl Write, buf_size : usize)
     Ok(())
 }
 
-#[test]
-fn test_write_object() {
-    let tempdir = tempfile::tempdir().unwrap();
-    let mut reader = b"hello world".as_slice();
-    let reader_len = reader.len();
-    let result = write_object(ObjectType::Blob, &mut reader, tempdir.path(), reader_len);
-    result.unwrap();
+#[cfg(test)]
+mod tests {
+    use crate::objects::object::ObjectType;
+    use super::*;
+
+    #[test]
+    fn test_write_object() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let mut reader = b"hello world".as_slice();
+        let reader_len = reader.len();
+        let result = write_object(ObjectType::Blob, &mut reader, tempdir.path(), reader_len);
+        result.unwrap();
+    }
 }

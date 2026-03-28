@@ -1,39 +1,9 @@
 use std::io::{Read, Write};
 use sha1::Digest;
 use flate2::write::ZlibEncoder;
-use std::fmt;
-use std::fmt::Display;
+use crate::objects::object::ObjectType;
 
-/// The type of Git object.
-#[derive(Copy, Clone)]
-pub enum ObjectType {
-    Blob,
-    Tree,
-    Commit,
-}
 
-impl std::str::FromStr for ObjectType {
-    type Err = anyhow::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "blob" => Ok(ObjectType::Blob),
-            "tree" => Ok(ObjectType::Tree),
-            "commit" => Ok(ObjectType::Commit),
-            _ => Err(anyhow::anyhow!("unknown object type: {}", s)),
-        }
-    }
-
-}
-
-impl Display for ObjectType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ObjectType::Blob => write!(f, "blob"),
-            ObjectType::Tree => write!(f, "tree"),
-            ObjectType::Commit => write!(f, "commit"),
-        }
-    }
-}
 
 /// A computed Git object hash with its SHA-1 hex digest.
 pub struct ObjectHash {
@@ -83,74 +53,78 @@ impl ObjectHash {
     }
 }
 
-#[test]
-fn test_build_object_hash() {
-    let obj_type = ObjectType::Blob;
-    let size = 11;
-    let mut reader = b"hello world".as_slice();
-    let mut writer = Vec::new();
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_build_object_hash() {
+        let obj_type = ObjectType::Blob;
+        let size = 11;
+        let mut reader = b"hello world".as_slice();
+        let mut writer = Vec::new();
 
-    let object_hash = ObjectHash::build(&mut reader, &mut writer, obj_type, size).unwrap();
+        let object_hash = ObjectHash::build(&mut reader, &mut writer, obj_type, size).unwrap();
 
-    let expected_hash_input = "blob 11\0hello world";
-    let expected_hash = format!("{:x}", sha1::Sha1::digest(expected_hash_input.as_bytes())).to_string();
-    assert_eq!(object_hash.hash, expected_hash);
+        let expected_hash_input = "blob 11\0hello world";
+        let expected_hash = format!("{:x}", sha1::Sha1::digest(expected_hash_input.as_bytes())).to_string();
+        assert_eq!(object_hash.hash, expected_hash);
 
-    let expected_contents = Vec::new();
-    let mut zlib_encoder = ZlibEncoder::new(expected_contents, flate2::Compression::default());
-    zlib_encoder.write_all(expected_hash_input.as_bytes()).unwrap();
-    let expected_contents = zlib_encoder.finish().unwrap();
-    assert_eq!(writer, expected_contents);
-}
+        let expected_contents = Vec::new();
+        let mut zlib_encoder = ZlibEncoder::new(expected_contents, flate2::Compression::default());
+        zlib_encoder.write_all(expected_hash_input.as_bytes()).unwrap();
+        let expected_contents = zlib_encoder.finish().unwrap();
+        assert_eq!(writer, expected_contents);
+    }
 
-#[test]
-fn test_build_object_bigger_than_buf_size() {
-    let buf_size = 1;
-    let obj_type = ObjectType::Blob;
-    let size = 11;
-    let mut reader = b"hello world".as_slice();
-    let mut writer = Vec::new();
+    #[test]
+    fn test_build_object_bigger_than_buf_size() {
+        let buf_size = 1;
+        let obj_type = ObjectType::Blob;
+        let size = 11;
+        let mut reader = b"hello world".as_slice();
+        let mut writer = Vec::new();
 
-    let object_hash = ObjectHash::build_with_buf_size(&mut reader, &mut writer, obj_type, size, buf_size).unwrap();
+        let object_hash = ObjectHash::build_with_buf_size(&mut reader, &mut writer, obj_type, size, buf_size).unwrap();
 
-    let expected_hash_input = "blob 11\0hello world";
-    let expected_hash = format!("{:x}", sha1::Sha1::digest(expected_hash_input.as_bytes())).to_string();
-    assert_eq!(object_hash.hash, expected_hash);
+        let expected_hash_input = "blob 11\0hello world";
+        let expected_hash = format!("{:x}", sha1::Sha1::digest(expected_hash_input.as_bytes())).to_string();
+        assert_eq!(object_hash.hash, expected_hash);
 
-    let expected_contents = Vec::new();
-    let mut zlib_encoder = ZlibEncoder::new(expected_contents, flate2::Compression::default());
-    zlib_encoder.write_all(expected_hash_input.as_bytes()).unwrap();
-    let expected_contents = zlib_encoder.finish().unwrap();
-    assert_eq!(writer, expected_contents);
-}
+        let expected_contents = Vec::new();
+        let mut zlib_encoder = ZlibEncoder::new(expected_contents, flate2::Compression::default());
+        zlib_encoder.write_all(expected_hash_input.as_bytes()).unwrap();
+        let expected_contents = zlib_encoder.finish().unwrap();
+        assert_eq!(writer, expected_contents);
+    }
 
-#[test]
-fn test_build_size_mismatch_returns_error() {
-    let obj_type = ObjectType::Blob;
-    let size = 5; // declared size != actual content length (11)
-    let mut reader = b"hello world".as_slice();
-    let mut writer = Vec::new();
+    #[test]
+    fn test_build_size_mismatch_returns_error() {
+        let obj_type = ObjectType::Blob;
+        let size = 5; // declared size != actual content length (11)
+        let mut reader = b"hello world".as_slice();
+        let mut writer = Vec::new();
 
-    let result = ObjectHash::build(&mut reader, &mut writer, obj_type, size);
-    assert!(result.is_err());
-}
+        let result = ObjectHash::build(&mut reader, &mut writer, obj_type, size);
+        assert!(result.is_err());
+    }
 
-#[test]
-fn test_build_empty_object() {
-    let obj_type = ObjectType::Blob;
-    let size = 0;
-    let mut reader = b"".as_slice();
-    let mut writer = Vec::new();
+    #[test]
+    fn test_build_empty_object() {
+        let obj_type = ObjectType::Blob;
+        let size = 0;
+        let mut reader = b"".as_slice();
+        let mut writer = Vec::new();
 
-    let object_hash = ObjectHash::build(&mut reader, &mut writer, obj_type, size).unwrap();
+        let object_hash = ObjectHash::build(&mut reader, &mut writer, obj_type, size).unwrap();
 
-    let expected_hash_input = "blob 0\0";
-    let expected_hash = format!("{:x}", sha1::Sha1::digest(expected_hash_input.as_bytes())).to_string();
-    assert_eq!(object_hash.hash, expected_hash);
+        let expected_hash_input = "blob 0\0";
+        let expected_hash = format!("{:x}", sha1::Sha1::digest(expected_hash_input.as_bytes())).to_string();
+        assert_eq!(object_hash.hash, expected_hash);
 
-    let expected_contents = Vec::new();
-    let mut zlib_encoder = ZlibEncoder::new(expected_contents, flate2::Compression::default());
-    zlib_encoder.write_all(expected_hash_input.as_bytes()).unwrap();
-    let expected_contents = zlib_encoder.finish().unwrap();
-    assert_eq!(writer, expected_contents);
+        let expected_contents = Vec::new();
+        let mut zlib_encoder = ZlibEncoder::new(expected_contents, flate2::Compression::default());
+        zlib_encoder.write_all(expected_hash_input.as_bytes()).unwrap();
+        let expected_contents = zlib_encoder.finish().unwrap();
+        assert_eq!(writer, expected_contents);
+    }
 }
