@@ -16,7 +16,7 @@ impl CliConfig {
     }
 
     fn resolve_git_dir(path : std::path::PathBuf) -> Option<std::path::PathBuf> {
-        let mut dir = std::path::PathBuf::from(path);
+        let mut dir = std::fs::canonicalize(std::path::PathBuf::from(path)).unwrap();
         loop {
             let git_dir = dir.join(".git");
             if git_dir.exists() {
@@ -51,6 +51,16 @@ mod tests {
         fs::create_dir(tmp.path().join(".git")).unwrap();
         let child = tmp.path().join("sub").join("deep");
         fs::create_dir_all(&child).unwrap();
+
+        let config = CliConfig::build(child.to_str().unwrap().to_string());
+        assert_eq!(config.git_dir, Some(tmp.path().join(".git")));
+    }
+
+    #[test]
+    fn resolve_git_dir_from_within_git_dir() {
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir_all(tmp.path().join(".git").join("objects")).unwrap();
+        let child = tmp.path().join(".git").join("objects");
 
         let config = CliConfig::build(child.to_str().unwrap().to_string());
         assert_eq!(config.git_dir, Some(tmp.path().join(".git")));

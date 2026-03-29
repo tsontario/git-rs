@@ -14,7 +14,7 @@ pub struct HashObjectArgs {
     // File to hash (or stdin if not specified)
     pub file: Option<String>,
 }
-pub fn call(config: &CliConfig, args : &HashObjectArgs) -> anyhow::Result<ObjectHash> {
+pub fn call(config: &CliConfig, args : &HashObjectArgs) -> anyhow::Result<()> {
     if args.file.is_none() {
         return Err(anyhow::anyhow!("No file specified and stdin is not yet supported"));
     }
@@ -30,5 +30,6 @@ pub fn call(config: &CliConfig, args : &HashObjectArgs) -> anyhow::Result<Object
         obj_hash = ObjectHash::build(&mut file, &mut std::io::sink(), args.obj_type, size)?;
     }
 
-    Ok(obj_hash)
+    println!("{}", obj_hash.hash);
+    Ok(())
 }

@@ -19,7 +19,7 @@ pub struct CatFileArgs {
     pub show_content: bool,
 }
 
-pub fn call(config: &CliConfig, args : &CatFileArgs) -> anyhow::Result<String> {
+pub fn call(config: &CliConfig, args : &CatFileArgs) -> anyhow::Result<()> {
     let (prefix, hash) = args.obj_hash.split_at(2);
     let git_path = config.git_dir.as_ref().ok_or_else(|| anyhow::anyhow!("Git directory not found"))?;
     let obj_path = git_path.join("objects").join(prefix).join(hash);
@@ -30,13 +30,13 @@ pub fn call(config: &CliConfig, args : &CatFileArgs) -> anyhow::Result<String> {
     let object = Object::build(buf)?;
 
     if args.show_size {
-        Ok(object.size.to_string())
+        println!("{}", object.size);
     } else if args.show_type {
-        Ok(object.obj_type.to_string())
+        println!("{}", object.obj_type);
     } else if args.show_content {
-        Ok(String::from_utf8(object.content)?)
+        println!("{}", String::from_utf8(object.content)?)
     } else {
-        Err(anyhow::anyhow!("No mode specified"))
+        return Err(anyhow::anyhow!("No mode specified"))
     }
+    Ok(())
 }
-

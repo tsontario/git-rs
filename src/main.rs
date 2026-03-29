@@ -33,13 +33,13 @@ fn main() {
         },
         Commands::HashObject(args) => {
             match commands::hash_object::call(&config, args) {
-                Ok(obj_hash) => println!("{}", obj_hash.hash),
+                Ok(_) => {},
                 Err(e) => eprintln!("Error: {}", e),
             }
         },
         Commands::CatFile(args) => {
             match commands::cat_file::call(&config, args) {
-                Ok(response) => {  println!("{}", response) }
+                Ok(_) => {}
                 Err(e) => eprintln!("Error: {}", e),
             }
         },
