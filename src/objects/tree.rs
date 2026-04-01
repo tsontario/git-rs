@@ -1,6 +1,6 @@
-use std::fmt::{Display, Formatter};
 use crate::objects::object::ObjectType;
 use crate::objects::utils;
+use std::fmt::{Display, Formatter};
 
 pub struct Tree {
     pub entries: Vec<TreeEntry>,
@@ -34,7 +34,7 @@ impl Mode {
 
     pub fn object_type(&self) -> ObjectType {
         match self {
-            Mode::RegularFile  | Mode::ExecutableFile | Mode::SymLink => ObjectType::Blob,
+            Mode::RegularFile | Mode::ExecutableFile | Mode::SymLink => ObjectType::Blob,
             Mode::Directory => ObjectType::Tree,
             Mode::GitLink => ObjectType::Commit,
         }
@@ -44,8 +44,8 @@ impl Mode {
 impl TreeEntry {
     // Parses a slice of bytes into a vector of tree entries.
     pub fn parse(bytes: &[u8]) -> anyhow::Result<Vec<Self>> {
-        let mut offset : usize = 0;
-        let mut entries : Vec<Self> = Vec::new();
+        let mut offset: usize = 0;
+        let mut entries: Vec<Self> = Vec::new();
         while offset < bytes.len() {
             let (entry, new_offset) = Self::parse_one(&bytes[offset..])?;
             entries.push(entry);
@@ -58,15 +58,24 @@ impl TreeEntry {
     // Returns the parsed entry and the offset of the (the possible) next entry.
     // It is the caller's responsibility to check if the offset is valid.
     fn parse_one(bytes: &[u8]) -> anyhow::Result<(Self, usize)> {
-        let null_pos = bytes.iter().position(|&b| { b == 0 }).unwrap();
-        let space_pos = bytes.iter().position(|&b| { b == b' ' }).unwrap();
+        let null_pos = bytes.iter().position(|&b| b == 0).unwrap();
+        let space_pos = bytes.iter().position(|&b| b == b' ').unwrap();
 
-        let mode = std::str::from_utf8(&bytes[..space_pos]).unwrap().parse::<u32>()?;
-        let filename = String::from_utf8(bytes[space_pos+1..null_pos].to_vec())?;
-        let hash = utils::bytes_to_string(&bytes[null_pos+1..null_pos+21]);
+        let mode = std::str::from_utf8(&bytes[..space_pos])
+            .unwrap()
+            .parse::<u32>()?;
+        let filename = String::from_utf8(bytes[space_pos + 1..null_pos].to_vec())?;
+        let hash = utils::bytes_to_string(&bytes[null_pos + 1..null_pos + 21]);
 
         // null_pos + 22 is the offset of the next entry
-        Ok((TreeEntry{mode, filename, hash}, null_pos + 21))
+        Ok((
+            TreeEntry {
+                mode,
+                filename,
+                hash,
+            },
+            null_pos + 21,
+        ))
     }
 
     fn object_type(&self) -> ObjectType {
@@ -76,15 +85,22 @@ impl TreeEntry {
 
 impl Display for TreeEntry {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:06} {} {}\t{}", self.mode, self.object_type(), self.hash, self.filename)
+        write!(
+            f,
+            "{:06} {} {}\t{}",
+            self.mode,
+            self.object_type(),
+            self.hash,
+            self.filename
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use sha1::Digest;
-    use crate::objects::utils::bytes_to_string;
     use super::*;
+    use crate::objects::utils::bytes_to_string;
+    use sha1::Digest;
 
     #[test]
     fn parse_single_tree_entry() {
@@ -113,7 +129,7 @@ mod tests {
         }
     }
 
-    fn build_tree_lines(len : usize) -> Vec<u8> {
+    fn build_tree_lines(len: usize) -> Vec<u8> {
         let mut lines = Vec::new();
         for i in 0..len {
             let hash = random_hash(Some(format!("{}", i)));
@@ -123,10 +139,10 @@ mod tests {
         }
         lines
     }
-    fn random_hash(input : Option<String>) -> Vec<u8> {
+    fn random_hash(input: Option<String>) -> Vec<u8> {
         match input {
             Some(input) => sha1::Sha1::digest(input.as_bytes()).to_vec(),
-            None => sha1::Sha1::digest(b"random_data").to_vec()
+            None => sha1::Sha1::digest(b"random_data").to_vec(),
         }
     }
 }

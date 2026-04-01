@@ -1,6 +1,6 @@
-pub mod init;
-pub mod hash_object;
 pub mod cat_file;
+pub mod hash_object;
+pub mod init;
 
 pub struct CliConfig {
     pub work_dir: String,
@@ -8,14 +8,14 @@ pub struct CliConfig {
 }
 
 impl CliConfig {
-    pub fn build(work_dir : String) -> CliConfig {
+    pub fn build(work_dir: String) -> CliConfig {
         CliConfig {
             work_dir: work_dir.clone(),
-            git_dir : Self::resolve_git_dir(std::path::PathBuf::from(work_dir.clone())),
+            git_dir: Self::resolve_git_dir(std::path::PathBuf::from(work_dir.clone())),
         }
     }
 
-    fn resolve_git_dir(path : std::path::PathBuf) -> Option<std::path::PathBuf> {
+    fn resolve_git_dir(path: std::path::PathBuf) -> Option<std::path::PathBuf> {
         let mut dir = std::fs::canonicalize(std::path::PathBuf::from(path)).unwrap();
         loop {
             let git_dir = dir.join(".git");
@@ -33,8 +33,8 @@ impl CliConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn resolve_git_dir_finds_git_in_work_dir() {

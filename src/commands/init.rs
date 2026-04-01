@@ -1,13 +1,13 @@
 use std::fs;
-use std::path;
 use std::io::Write;
+use std::path;
 
 const DIRS: [&str; 5] = [
     ".git",
     ".git/refs/heads",
     ".git/refs/tags",
     ".git/objects/info",
-    ".git/objects/pack"
+    ".git/objects/pack",
 ];
 
 const HEAD: &str = ".git/HEAD";
@@ -15,9 +15,13 @@ const HEAD: &str = ".git/HEAD";
 pub fn call(path: &path::Path) -> anyhow::Result<()> {
     let git_path = path.join(".git");
     match fs::exists(git_path) {
-        Ok(true) => { eprintln!("Reinitializing git repository...") }
-        Ok(false) => { eprintln!("Initializing git repository...") }
-        Err(e)=> {
+        Ok(true) => {
+            eprintln!("Reinitializing git repository...")
+        }
+        Ok(false) => {
+            eprintln!("Initializing git repository...")
+        }
+        Err(e) => {
             return Err(e.into());
         }
     }

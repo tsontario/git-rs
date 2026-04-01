@@ -3,7 +3,7 @@ use my_git::commands;
 use my_git::commands::CliConfig;
 
 #[derive(Parser)]
-#[command(version="0.1")]
+#[command(version = "0.1")]
 struct Cli {
     #[arg(short = 'C', default_value = ".")]
     work_dir: String,
@@ -14,7 +14,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Init { },
+    Init {},
     HashObject(commands::hash_object::HashObjectArgs),
     CatFile(commands::cat_file::CatFileArgs),
 }
@@ -30,18 +30,14 @@ fn main() {
                 Ok(_) => (),
                 Err(e) => eprintln!("Error: {}", e),
             }
+        }
+        Commands::HashObject(args) => match commands::hash_object::call(&config, args) {
+            Ok(_) => {}
+            Err(e) => eprintln!("Error: {}", e),
         },
-        Commands::HashObject(args) => {
-            match commands::hash_object::call(&config, args) {
-                Ok(_) => {},
-                Err(e) => eprintln!("Error: {}", e),
-            }
-        },
-        Commands::CatFile(args) => {
-            match commands::cat_file::call(&config, args) {
-                Ok(_) => {}
-                Err(e) => eprintln!("Error: {}", e),
-            }
+        Commands::CatFile(args) => match commands::cat_file::call(&config, args) {
+            Ok(_) => {}
+            Err(e) => eprintln!("Error: {}", e),
         },
     }
 }
