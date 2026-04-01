@@ -1,5 +1,6 @@
 use std::fmt;
 use std::fmt::Display;
+use crate::objects::tree;
 
 pub struct Object {
     pub obj_type : ObjectType,
@@ -11,12 +12,28 @@ impl Object {
     pub fn build(buf : Vec<u8>) -> Result<Object, anyhow::Error> {
         let null_pos = buf.iter().position(|&x| x == 0).ok_or_else(|| anyhow::anyhow!("malformed object header: no null byte found"))?;
         let header = String::from_utf8(buf[0..null_pos].to_vec())?;
-        let (obj_type, size) = header.split_once(' ').ok_or_else(|| anyhow::anyhow!("malformed object header"))?;
-        Ok(Object {
-            obj_type : obj_type.parse::<ObjectType>()?,
-            content : buf[null_pos+1..].to_vec(),
-            size : size.parse::<usize>()?,
-        })
+        let (raw_obj_type, size) = header.split_once(' ').ok_or_else(|| anyhow::anyhow!("malformed object header"))?;
+
+        let obj_type = raw_obj_type.trim().parse::<ObjectType>()?;
+        match obj_type {
+            ObjectType::Blob => {
+                Ok(Object {
+                    obj_type: obj_type,
+                    content: buf[null_pos + 1..].to_vec(),
+                    size: size.parse::<usize>()?,
+                })
+            },
+            ObjectType::Tree => {
+                let entries = tree::TreeEntry::parse(&buf[null_pos + 1..])?;
+                let content = entries.iter().map(|entry| format!("{}", entry)).collect::<Vec<String>>().join("\n");
+                Ok(Object {
+                    obj_type: obj_type,
+                    content: content.clone().into_bytes(),
+                    size: content.len(),
+                })
+            }
+            ObjectType::Commit =>  Err(anyhow::anyhow!("unknown object type: commit"))
+        }
     }
 }
 
