@@ -36,7 +36,7 @@ impl Object {
                 Ok(Object {
                     obj_type: obj_type,
                     content: content.clone().into_bytes(),
-                    size: content.len(),
+                    size: entries.iter().map(|entry| entry.size).sum(),
                 })
             }
             ObjectType::Commit => Err(anyhow::anyhow!("unknown object type: commit")),
@@ -45,7 +45,7 @@ impl Object {
 }
 
 /// The type of Git object.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum ObjectType {
     Blob,
     Tree,

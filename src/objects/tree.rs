@@ -10,6 +10,8 @@ pub struct TreeEntry {
     pub mode: u32,
     pub filename: String,
     pub hash: String,
+    pub size: usize,
+    pub path_prefix: String,
 }
 
 pub enum Mode {
@@ -25,9 +27,9 @@ impl Mode {
         match mode {
             100644 => Ok(Mode::RegularFile),
             100755 => Ok(Mode::ExecutableFile),
-            040000 => Ok(Mode::Directory),
+            40000 => Ok(Mode::Directory),
             120000 => Ok(Mode::SymLink),
-            120001 => Ok(Mode::GitLink),
+            160000 => Ok(Mode::GitLink),
             _ => Err(anyhow::anyhow!("unknown mode: {}", mode)),
         }
     }
@@ -66,6 +68,7 @@ impl TreeEntry {
             .parse::<u32>()?;
         let filename = String::from_utf8(bytes[space_pos + 1..null_pos].to_vec())?;
         let hash = utils::bytes_to_string(&bytes[null_pos + 1..null_pos + 21]);
+        let size = null_pos + 21;
 
         // null_pos + 22 is the offset of the next entry
         Ok((
@@ -73,25 +76,28 @@ impl TreeEntry {
                 mode,
                 filename,
                 hash,
+                size,
+                path_prefix: String::from("")
             },
-            null_pos + 21,
+            size,
         ))
     }
 
-    fn object_type(&self) -> ObjectType {
+    pub(crate) fn object_type(&self) -> ObjectType {
         Mode::from_u32(self.mode).unwrap().object_type()
     }
 }
 
 impl Display for TreeEntry {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let filepath = std::path::Path::new(&self.path_prefix).join(&self.filename);
         write!(
             f,
             "{:06} {} {}\t{}",
             self.mode,
             self.object_type(),
             self.hash,
-            self.filename
+            filepath.to_str().unwrap()
         )
     }
 }
@@ -113,6 +119,7 @@ mod tests {
         assert_eq!(entry.mode, 100644);
         assert_eq!(entry.filename, "file1.txt");
         assert_eq!(entry.hash, bytes_to_string(&hash));
+        assert_eq!(entry.size, 37);
     }
 
     #[test]
@@ -126,6 +133,7 @@ mod tests {
             assert_eq!(entry.mode, 100644);
             assert_eq!(entry.filename, format!("file{}.txt", i));
             assert_eq!(entry.hash, bytes_to_string(&expected_hash));
+            assert_eq!(entry.size, 37);
         }
     }
 

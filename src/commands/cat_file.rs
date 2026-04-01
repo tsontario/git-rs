@@ -2,6 +2,7 @@ use crate::commands::CliConfig;
 use crate::objects::object::Object;
 use flate2::read::ZlibDecoder;
 use std::io::Read;
+use crate::objects::tree_traversal;
 
 #[derive(clap::Args, Clone)]
 #[command(group = clap::ArgGroup::new("mode").required(true))]
@@ -30,6 +31,8 @@ pub fn call(config: &CliConfig, args: &CatFileArgs) -> anyhow::Result<()> {
     let mut decoder = ZlibDecoder::new(std::fs::File::open(obj_path)?);
     let mut buf = Vec::new();
     decoder.read_to_end(&mut buf)?;
+    let entries = tree_traversal::traverse(args.obj_hash.clone(), std::path::PathBuf::new())?;
+    println!("{}", entries.iter().map(|entry| format!("{}", entry)).collect::<Vec<String>>().join("\n"));
     let object = Object::build(buf)?;
 
     if args.show_size {
