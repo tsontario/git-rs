@@ -1,7 +1,6 @@
 use crate::objects::{blob, tree};
 use std::fmt;
 use std::fmt::Display;
-use std::path::PathBuf;
 
 pub(crate) trait ObjectMeta {
     fn size(&self) -> usize;

@@ -1,25 +1,23 @@
 mod common;
 
 use assert_cmd::Command;
-use my_git::commands::CliConfig;
 
 #[test]
 fn test_cat_file_missing_required_arg() {
-    let (tempdir, _tempfile, git_dir) = common::init_simple_git_dir().unwrap();
-    let config = CliConfig {
-        work_dir: format!("{}", tempdir.path().display()),
-        git_dir,
-    };
-    Command::cargo_bin("my-git")
-        .unwrap()
-        .arg("cat-file")
+    let (tempdir, _tempfile, _git_dir) = common::init_simple_git_dir().unwrap();
+    Command::cargo_bin("my-git").unwrap()
+        .args([
+            "-C",
+            tempdir.path().to_str().unwrap(),
+            "cat-file"
+        ])
         .assert()
         .failure();
 }
 
 #[test]
 fn test_cat_file_print_type() {
-    let (tempdir, tempfile, git_dir) = common::init_simple_git_dir().unwrap();
+    let (tempdir, tempfile, _git_dir) = common::init_simple_git_dir().unwrap();
 
     let hash_object_out = Command::cargo_bin("my-git")
         .unwrap()
@@ -53,7 +51,6 @@ fn test_cat_file_print_type() {
         .get_output()
         .clone();
 
-    let err = String::from_utf8(cat_file_out.stderr).unwrap();
     assert_eq!(
         String::from_utf8(cat_file_out.stdout).unwrap(),
         "blob\n".to_string()
@@ -62,7 +59,7 @@ fn test_cat_file_print_type() {
 
 #[test]
 fn test_cat_file_print_size() {
-    let (tempdir, tempfile, git_dir) = common::init_simple_git_dir().unwrap();
+    let (tempdir, tempfile, _git_dir) = common::init_simple_git_dir().unwrap();
     let hash_object_out = Command::cargo_bin("my-git")
         .unwrap()
         .args([
@@ -95,7 +92,6 @@ fn test_cat_file_print_size() {
         .get_output()
         .clone();
 
-    let err = String::from_utf8(cat_file_out.stderr).unwrap();
     assert_eq!(
         String::from_utf8(cat_file_out.stdout).unwrap(),
         "11\n".to_string()
@@ -104,7 +100,7 @@ fn test_cat_file_print_size() {
 
 #[test]
 fn test_cat_file_print_content() {
-    let (tempdir, tempfile, git_dir) = common::init_simple_git_dir().unwrap();
+    let (tempdir, tempfile, _git_dir) = common::init_simple_git_dir().unwrap();
     let hash_object_out = Command::cargo_bin("my-git")
         .unwrap()
         .args([
@@ -137,7 +133,6 @@ fn test_cat_file_print_content() {
         .get_output()
         .clone();
 
-    let err = String::from_utf8(cat_file_out.stderr).unwrap();
     assert_eq!(
         String::from_utf8(cat_file_out.stdout).unwrap(),
         "hello world\n".to_string()

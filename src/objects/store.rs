@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_write_object() {
-        let (store, tempdir) = build_store();
+        let (store, _tempdir) = build_store();
         let mut reader = b"hello world".as_slice();
         let reader_len = reader.len();
         let result = store.write_object(ObjectType::Blob, &mut reader, reader_len);

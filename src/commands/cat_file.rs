@@ -1,8 +1,6 @@
 use crate::commands::CliConfig;
 use crate::objects;
-use crate::objects::object::{Object, ObjectMeta};
-use flate2::read::ZlibDecoder;
-use std::io::Read;
+use crate::objects::object::{ObjectMeta};
 
 #[derive(clap::Args, Clone)]
 #[command(group = clap::ArgGroup::new("mode").required(true))]

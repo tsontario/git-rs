@@ -1,6 +1,5 @@
 use assert_cmd::Command;
 use my_git::objects::object;
-use my_git::objects::object::Object;
 use my_git::objects::object_hash::ObjectHash;
 use my_git::objects::store;
 use std::io::Seek;
@@ -65,6 +64,6 @@ fn test_hash_object_write_to_file() {
         .trim()
         .to_string();
 
-    let mut decoded_object = store.decode_object(&object_hash).unwrap();
+    let decoded_object = store.decode_object(&object_hash).unwrap();
     assert_eq!(b"blob 11\0hello world", decoded_object.as_slice());
 }
