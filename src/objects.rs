@@ -1,3 +1,7 @@
+pub mod blob;
+pub mod object;
 pub mod object_hash;
 pub mod store;
-pub mod object;
+pub mod tree;
+pub mod tree_traversal;
+mod utils;
