@@ -1,6 +1,8 @@
 use crate::objects::object::ObjectType;
-use crate::objects::utils;
+use crate::objects::{object, utils, store};
 use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
+use crate::objects::object_hash::ObjectHash;
 
 pub struct Tree {
     pub entries: Vec<TreeEntry>,
@@ -77,7 +79,7 @@ impl TreeEntry {
                 filename,
                 hash,
                 size,
-                path_prefix: String::from("")
+                path_prefix: String::from(""),
             },
             size,
         ))

@@ -17,6 +17,7 @@ enum Commands {
     Init {},
     HashObject(commands::hash_object::HashObjectArgs),
     CatFile(commands::cat_file::CatFileArgs),
+    LsTree(commands::ls_tree::LsTreeArgs),
 }
 
 fn main() {
@@ -36,6 +37,10 @@ fn main() {
             Err(e) => eprintln!("Error: {}", e),
         },
         Commands::CatFile(args) => match commands::cat_file::call(&config, args) {
+            Ok(_) => {}
+            Err(e) => eprintln!("Error: {}", e),
+        },
+        Commands::LsTree(args) => match commands::ls_tree::call(&config, args) {
             Ok(_) => {}
             Err(e) => eprintln!("Error: {}", e),
         },

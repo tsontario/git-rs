@@ -1,8 +1,8 @@
 use crate::commands::CliConfig;
-use crate::objects::object::Object;
+use crate::objects::object::{Object, ObjectMeta};
 use flate2::read::ZlibDecoder;
 use std::io::Read;
-use crate::objects::tree_traversal;
+use crate::objects;
 
 #[derive(clap::Args, Clone)]
 #[command(group = clap::ArgGroup::new("mode").required(true))]
@@ -21,26 +21,15 @@ pub struct CatFileArgs {
 }
 
 pub fn call(config: &CliConfig, args: &CatFileArgs) -> anyhow::Result<()> {
-    let (prefix, hash) = args.obj_hash.split_at(2);
-    let git_path = config
-        .git_dir
-        .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("Git directory not found"))?;
-    let obj_path = git_path.join("objects").join(prefix).join(hash);
-
-    let mut decoder = ZlibDecoder::new(std::fs::File::open(obj_path)?);
-    let mut buf = Vec::new();
-    decoder.read_to_end(&mut buf)?;
-    let entries = tree_traversal::traverse(args.obj_hash.clone(), std::path::PathBuf::new())?;
-    println!("{}", entries.iter().map(|entry| format!("{}", entry)).collect::<Vec<String>>().join("\n"));
-    let object = Object::build(buf)?;
+    let store = objects::store::Store::new(config.git_dir.clone())?;
+    let object = store.load_object(&args.obj_hash)?;
 
     if args.show_size {
-        println!("{}", object.size);
+        println!("{}", object.size());
     } else if args.show_type {
-        println!("{}", object.obj_type);
+        println!("{}", object.obj_type());
     } else if args.show_content {
-        println!("{}", String::from_utf8(object.content)?)
+        println!("{}", String::from_utf8(object.content())?)
     } else {
         return Err(anyhow::anyhow!("No mode specified"));
     }

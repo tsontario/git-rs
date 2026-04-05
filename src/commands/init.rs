@@ -13,6 +13,7 @@ const DIRS: [&str; 5] = [
 const HEAD: &str = ".git/HEAD";
 
 pub fn call(path: &path::Path) -> anyhow::Result<()> {
+    // TODO: Move all this code to Repository:init! Then you can use it to easily scaffold tests
     let git_path = path.join(".git");
     match fs::exists(git_path) {
         Ok(true) => {

@@ -1,11 +1,47 @@
-use crate::objects::tree;
+use crate::objects::{blob, tree};
 use std::fmt;
 use std::fmt::Display;
+use std::path::PathBuf;
 
-pub struct Object {
-    pub obj_type: ObjectType,
-    pub content: Vec<u8>,
-    pub size: usize,
+pub(crate) trait ObjectMeta {
+    fn size(&self) -> usize;
+    fn obj_type(&self) -> ObjectType;
+    fn content(&self) -> Vec<u8>;
+}
+
+pub enum Object {
+    Blob(blob::Blob),
+    Tree(tree::Tree),
+}
+
+impl ObjectMeta for Object {
+    fn size(&self) -> usize {
+        match self {
+            Object::Blob(blob) => blob.size,
+            Object::Tree(tree) => tree.entries.iter().map(|e| e.size).sum(),
+        }
+    }
+
+    fn obj_type(&self) -> ObjectType {
+        match self {
+            Object::Blob(_) => ObjectType::Blob,
+            Object::Tree(_) => ObjectType::Tree,
+        }
+    }
+
+    fn content(&self) -> Vec<u8> {
+        match self {
+            Object::Blob(blob) => blob.content.to_vec(),
+            Object::Tree(tree) => tree
+                .entries
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join("\n")
+                .as_bytes()
+                .to_vec(),
+        }
+    }
 }
 
 impl Object {
@@ -21,23 +57,18 @@ impl Object {
 
         let obj_type = raw_obj_type.trim().parse::<ObjectType>()?;
         match obj_type {
-            ObjectType::Blob => Ok(Object {
-                obj_type: obj_type,
-                content: buf[null_pos + 1..].to_vec(),
-                size: size.parse::<usize>()?,
-            }),
+            ObjectType::Blob => {
+                let blob = blob::Blob {
+                    obj_type: obj_type,
+                    content: buf[null_pos + 1..].to_vec(),
+                    size: size.parse::<usize>()?,
+                };
+                Ok(Object::Blob(blob))
+            }
             ObjectType::Tree => {
                 let entries = tree::TreeEntry::parse(&buf[null_pos + 1..])?;
-                let content = entries
-                    .iter()
-                    .map(|entry| format!("{}", entry))
-                    .collect::<Vec<String>>()
-                    .join("\n");
-                Ok(Object {
-                    obj_type: obj_type,
-                    content: content.clone().into_bytes(),
-                    size: entries.iter().map(|entry| entry.size).sum(),
-                })
+                let tree = tree::Tree { entries };
+                Ok(Object::Tree(tree))
             }
             ObjectType::Commit => Err(anyhow::anyhow!("unknown object type: commit")),
         }

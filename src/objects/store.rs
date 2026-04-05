@@ -1,71 +1,122 @@
-use crate::objects::object::ObjectType;
+use crate::objects::object::{Object, ObjectType};
 use crate::objects::object_hash::ObjectHash;
 use flate2::read::ZlibDecoder;
 use std::io::{Read, Write};
+use std::{fs, path};
 
-pub(crate) const DEFAULT_OBJ_PATH: &str = ".git/objects";
-
-pub fn write_object(
-    obj_type: ObjectType,
-    reader: &mut impl Read,
-    out_path: &std::path::Path,
-    size: usize,
-) -> anyhow::Result<ObjectHash> {
-    std::fs::create_dir_all(out_path)?;
-    let mut tempfile = tempfile::Builder::new()
-        .prefix("tmp_obj_")
-        .tempfile_in(out_path)?;
-
-    let obj_hash = ObjectHash::build(reader, &mut tempfile, obj_type, size)?;
-
-    let obj_file_path = create_path_for_object(&obj_hash, out_path)?;
-
-    tempfile.persist(obj_file_path)?;
-    Ok(obj_hash)
+/// Encapsulates access to the git object store on the filesystem.
+///
+/// Owns all object I/O. Other structs should use Store to access
+/// objects rather than interacting with the filesystem directly.
+pub struct Store {
+    repo_dir: path::PathBuf,
 }
 
-pub fn create_path_for_object(
-    obj_hash: &ObjectHash,
-    base_path: &std::path::Path,
-) -> anyhow::Result<std::path::PathBuf> {
-    let path = base_path.join(path_for_object(obj_hash));
-    std::fs::create_dir_all(path.parent().unwrap())?;
-    Ok(path)
-}
+impl Store {
+    const DEFAULT_OBJ_PATH: &str = ".git/objects";
+    const BUF_SIZE: usize = 8192;
 
-pub fn path_for_object(obj_hash: &ObjectHash) -> std::path::PathBuf {
-    let (prefix, suffix) = obj_hash.hash.split_at(2);
-    std::path::Path::new(prefix).join(suffix)
-}
-
-pub fn load(
-    reader: &mut impl Read,
-    writer: &mut impl Write,
-    buf_size: usize,
-) -> anyhow::Result<()> {
-    let mut buffer = vec![0; buf_size];
-    let mut zlib_decoder = ZlibDecoder::new(reader);
-    loop {
-        let bytes_read = zlib_decoder.read(&mut buffer)?;
-        if bytes_read == 0 {
-            break;
+    /// Creates a new Store rooted at the directory containing the `.git` directory
+    pub fn new(repo_dir: path::PathBuf) -> anyhow::Result<Self> {
+        let git_dir = repo_dir.join(".git");
+        if !git_dir.exists() {
+            return Err(anyhow::anyhow!("Repository directory does not contain a .git directory"));
         }
-        writer.write_all(&buffer[0..bytes_read])?;
+        Ok(Self { repo_dir })
     }
-    Ok(())
+
+    /// Returns the path within the object store for the given object hash
+    pub fn path_for_object(&self, obj_hash: &str) -> path::PathBuf {
+        let (prefix, suffix) = obj_hash.split_at(2);
+        self.objects_dir().join(prefix).join(suffix)
+    }
+
+    /// Loads an object from the object store by its hash.
+    pub fn load_object(&self, obj_hash: &str) -> anyhow::Result<Object> {
+        let decoded_object = self.decode_object(obj_hash)?;
+        Object::build(decoded_object)
+    }
+
+    /// Absolute path to the root directory of the repository
+    pub fn repo_dir(&self) -> &path::Path {
+        &self.repo_dir
+    }
+
+    /// Writes a new object of type obj_type to the object store. Returns the hash of the object.
+    /// The object is first written to a temporary file in the objects dir before being moved to its
+    /// final location.
+    ///
+    /// # Arguments
+    /// * `obj_type` - the type of the object to write
+    /// * `reader` - the contents to be written to the store
+    /// * `size` - the size of the object being read in bytes
+    pub fn write_object(
+        &self,
+        obj_type: ObjectType,
+        reader: &mut impl Read,
+        size: usize,
+    ) -> anyhow::Result<ObjectHash> {
+        let mut tempfile = tempfile::Builder::new()
+            .prefix("tmp_obj_")
+            .tempfile_in(self.objects_dir())?;
+
+        let obj_hash = ObjectHash::build(reader, &mut tempfile, obj_type, size)?;
+        let obj_file_path = self.create_path_for_object(&obj_hash.hash)?;
+
+        tempfile.persist(obj_file_path)?;
+        Ok(obj_hash)
+    }
+
+    /// Reads the object data from the file pointed to by obj_hash and returns the decoded result
+    pub fn decode_object(&self, obj_hash: &str) -> anyhow::Result<Vec<u8>> {
+        let source_file = fs::File::open(self.path_for_object(obj_hash))?;
+        let mut buffer = vec![0; Self::BUF_SIZE];
+        let mut decoded_object = Vec::new();
+        let mut zlib_decoder = ZlibDecoder::new(source_file);
+        loop {
+            let bytes_read = zlib_decoder.read(&mut buffer)?;
+            if bytes_read == 0 {
+                break;
+            }
+            decoded_object.write_all(&buffer[0..bytes_read])?;
+        }
+        Ok(decoded_object)
+    }
+
+    fn objects_dir(&self) -> path::PathBuf {
+        self.repo_dir.join(Store::DEFAULT_OBJ_PATH)
+    }
+
+    /// Creates the directory path for the given object hash and returns the path to the object
+    fn create_path_for_object(
+        &self,
+        obj_hash: &str,
+    ) -> anyhow::Result<path::PathBuf> {
+        let path = self.path_for_object(obj_hash);
+        let parent = path.parent().expect("object path always has a parent");
+        fs::create_dir_all(parent)?;
+        Ok(path)
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use tempfile::TempDir;
     use super::*;
     use crate::objects::object::ObjectType;
 
     #[test]
     fn test_write_object() {
-        let tempdir = tempfile::tempdir().unwrap();
+        let (store, tempdir) = build_store();
         let mut reader = b"hello world".as_slice();
         let reader_len = reader.len();
-        let result = write_object(ObjectType::Blob, &mut reader, tempdir.path(), reader_len);
+        let result = store.write_object(ObjectType::Blob, &mut reader, reader_len);
         result.unwrap();
+    }
+
+    fn build_store() -> (Store, TempDir) {
+        let tempdir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(tempdir.path().join(".git").join("objects")).unwrap();
+        (Store::new(tempdir.path().to_path_buf()).unwrap(), tempdir)
     }
 }

@@ -1,10 +1,11 @@
 pub mod cat_file;
 pub mod hash_object;
 pub mod init;
+pub mod ls_tree;
 
 pub struct CliConfig {
     pub work_dir: String,
-    pub git_dir: Option<std::path::PathBuf>,
+    pub git_dir: std::path::PathBuf,
 }
 
 impl CliConfig {
@@ -15,15 +16,15 @@ impl CliConfig {
         }
     }
 
-    fn resolve_git_dir(path: std::path::PathBuf) -> Option<std::path::PathBuf> {
+    fn resolve_git_dir(path: std::path::PathBuf) -> std::path::PathBuf {
         let mut dir = std::fs::canonicalize(std::path::PathBuf::from(path)).unwrap();
         loop {
             let git_dir = dir.join(".git");
             if git_dir.exists() {
-                return Some(git_dir);
+                return git_dir.parent().unwrap().to_path_buf();
             }
             if dir.parent().is_none() {
-                return None;
+                panic!("Could not find .git directory");
             }
             dir = dir.parent().unwrap().to_path_buf();
         }
@@ -38,31 +39,34 @@ mod tests {
 
     #[test]
     fn resolve_git_dir_finds_git_in_work_dir() {
-        let tmp = TempDir::new().unwrap();
-        fs::create_dir(tmp.path().join(".git")).unwrap();
+        let tempdir = TempDir::new().unwrap();
+        let absolute_path = std::fs::canonicalize(tempdir.path()).unwrap();
+        fs::create_dir(absolute_path.join(".git")).unwrap();
 
-        let config = CliConfig::build(tmp.path().to_str().unwrap().to_string());
-        assert_eq!(config.git_dir, Some(tmp.path().join(".git")));
+        let config = CliConfig::build(absolute_path.to_str().unwrap().to_string());
+        assert_eq!(config.git_dir, absolute_path);
     }
 
     #[test]
     fn resolve_git_dir_finds_git_in_ancestor() {
-        let tmp = TempDir::new().unwrap();
-        fs::create_dir(tmp.path().join(".git")).unwrap();
-        let child = tmp.path().join("sub").join("deep");
+        let tempdir = TempDir::new().unwrap();
+        let absolute_path = std::fs::canonicalize(tempdir.path()).unwrap();
+        fs::create_dir(absolute_path.join(".git")).unwrap();
+        let child = absolute_path.join("sub").join("deep");
         fs::create_dir_all(&child).unwrap();
 
         let config = CliConfig::build(child.to_str().unwrap().to_string());
-        assert_eq!(config.git_dir, Some(tmp.path().join(".git")));
+        assert_eq!(config.git_dir, absolute_path);
     }
 
     #[test]
     fn resolve_git_dir_from_within_git_dir() {
-        let tmp = TempDir::new().unwrap();
-        fs::create_dir_all(tmp.path().join(".git").join("objects")).unwrap();
-        let child = tmp.path().join(".git").join("objects");
+        let tempdir = TempDir::new().unwrap();
+        let absolute_path = std::fs::canonicalize(tempdir.path()).unwrap();
+        fs::create_dir_all(absolute_path.join(".git").join("objects")).unwrap();
+        let child = absolute_path.join(".git").join("objects");
 
         let config = CliConfig::build(child.to_str().unwrap().to_string());
-        assert_eq!(config.git_dir, Some(tmp.path().join(".git")));
+        assert_eq!(config.git_dir, absolute_path);
     }
 }

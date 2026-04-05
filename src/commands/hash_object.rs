@@ -20,19 +20,16 @@ pub fn call(config: &CliConfig, args: &HashObjectArgs) -> anyhow::Result<()> {
             "No file specified and stdin is not yet supported"
         ));
     }
-
+    let store = store::Store::new(config.git_dir.to_path_buf())?;
     let work_dir = std::path::Path::new(&config.work_dir);
     let path = std::path::Path::join(work_dir, args.file.as_ref().unwrap());
     let mut file = std::fs::File::open(path)?;
     let size = file.metadata()?.len() as usize;
     let obj_hash: ObjectHash;
     if args.write {
-        obj_hash = store::write_object(
+        obj_hash = store.write_object(
             args.obj_type,
             &mut file,
-            std::path::Path::new(work_dir)
-                .join(store::DEFAULT_OBJ_PATH)
-                .as_path(),
             size,
         )?;
     } else {
