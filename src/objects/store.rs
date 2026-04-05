@@ -20,7 +20,9 @@ impl Store {
     pub fn new(repo_dir: path::PathBuf) -> anyhow::Result<Self> {
         let git_dir = repo_dir.join(".git");
         if !git_dir.exists() {
-            return Err(anyhow::anyhow!("Repository directory does not contain a .git directory"));
+            return Err(anyhow::anyhow!(
+                "Repository directory does not contain a .git directory"
+            ));
         }
         Ok(Self { repo_dir })
     }
@@ -88,10 +90,7 @@ impl Store {
     }
 
     /// Creates the directory path for the given object hash and returns the path to the object
-    fn create_path_for_object(
-        &self,
-        obj_hash: &str,
-    ) -> anyhow::Result<path::PathBuf> {
+    fn create_path_for_object(&self, obj_hash: &str) -> anyhow::Result<path::PathBuf> {
         let path = self.path_for_object(obj_hash);
         let parent = path.parent().expect("object path always has a parent");
         fs::create_dir_all(parent)?;
@@ -101,9 +100,9 @@ impl Store {
 
 #[cfg(test)]
 mod tests {
-    use tempfile::TempDir;
     use super::*;
     use crate::objects::object::ObjectType;
+    use tempfile::TempDir;
 
     #[test]
     fn test_write_object() {

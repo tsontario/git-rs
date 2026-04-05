@@ -1,8 +1,8 @@
 use crate::objects::object::ObjectType;
-use crate::objects::{object, utils, store};
+use crate::objects::object_hash::ObjectHash;
+use crate::objects::{object, store, utils};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
-use crate::objects::object_hash::ObjectHash;
 
 pub struct Tree {
     pub entries: Vec<TreeEntry>,

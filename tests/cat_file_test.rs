@@ -8,7 +8,7 @@ fn test_cat_file_missing_required_arg() {
     let (tempdir, _tempfile, git_dir) = common::init_simple_git_dir().unwrap();
     let config = CliConfig {
         work_dir: format!("{}", tempdir.path().display()),
-        git_dir: Some(git_dir),
+        git_dir,
     };
     Command::cargo_bin("my-git")
         .unwrap()

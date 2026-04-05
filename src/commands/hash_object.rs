@@ -27,11 +27,7 @@ pub fn call(config: &CliConfig, args: &HashObjectArgs) -> anyhow::Result<()> {
     let size = file.metadata()?.len() as usize;
     let obj_hash: ObjectHash;
     if args.write {
-        obj_hash = store.write_object(
-            args.obj_type,
-            &mut file,
-            size,
-        )?;
+        obj_hash = store.write_object(args.obj_type, &mut file, size)?;
     } else {
         obj_hash = ObjectHash::build(&mut file, &mut std::io::sink(), args.obj_type, size)?;
     }

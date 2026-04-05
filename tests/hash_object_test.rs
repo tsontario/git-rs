@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use my_git::objects::object;
+use my_git::objects::object::Object;
 use my_git::objects::object_hash::ObjectHash;
 use my_git::objects::store;
 use std::io::Seek;
@@ -42,6 +43,7 @@ fn test_hash_object_print_only() {
 #[test]
 fn test_hash_object_write_to_file() {
     let (tempdir, tempfile, _) = common::init_simple_git_dir().unwrap();
+    let store = store::Store::new(tempdir.path().to_path_buf()).unwrap();
 
     let hash_object_out = Command::cargo_bin("my-git")
         .unwrap()
@@ -63,17 +65,6 @@ fn test_hash_object_write_to_file() {
         .trim()
         .to_string();
 
-    let compressed_path = tempdir
-        .path()
-        .join(".git")
-        .join("objects")
-        .join(store::path_for_object(&ObjectHash { hash: object_hash }));
-    let mut buf: Vec<u8> = Vec::new();
-    store::load(
-        &mut std::fs::File::open(compressed_path).unwrap(),
-        &mut buf,
-        16,
-    )
-    .unwrap();
-    assert_eq!(b"blob 11\0hello world", buf.as_slice());
+    let mut decoded_object = store.decode_object(&object_hash).unwrap();
+    assert_eq!(b"blob 11\0hello world", decoded_object.as_slice());
 }
