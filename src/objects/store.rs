@@ -96,13 +96,14 @@ impl Store {
             return Err(anyhow::anyhow!("object is not a tree"));
         };
         let mut result: Vec<tree::TreeEntry> = vec![];
-        for entry in tree.entries.iter() {
+        for mut entry in tree.entries.into_iter() {
             if entry.object_type() == ObjectType::Tree {
                 let subtree =
                     self.load_tree_recursive(&entry.hash, path_prefix.join(&entry.filename))?;
                 result.extend(subtree.entries)
             } else {
-                result.push(entry.clone());
+                entry.set_prefix(&path_prefix);
+                result.push(entry);
             }
         }
 
@@ -125,7 +126,6 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::objects::object::Object::Tree;
     use crate::objects::object::ObjectType;
     use tempfile::TempDir;
 
@@ -146,12 +146,7 @@ mod tests {
         let blob_hash = store
             .write_object(ObjectType::Blob, &mut reader, reader_len)
             .unwrap();
-        let entry = tree::TreeEntry {
-            mode: 100644,
-            hash: blob_hash.hash,
-            filename: "test.txt".to_string(),
-            size: 11,
-        };
+        let entry = tree::TreeEntry::new(100644, blob_hash.hash, "test.txt".to_string(), 11);
         let tree = tree::Tree {
             entries: vec![entry],
         };
@@ -165,6 +160,50 @@ mod tests {
             .unwrap();
         let result = store.load_tree_recursive(&tree_hash.hash, path::PathBuf::new());
         assert_eq!(result.unwrap().entries[0].filename, "test.txt");
+    }
+
+    #[test]
+    fn load_tree_recursive_nested() {
+        let (store, _tempdir) = build_store();
+        let mut reader = b"hello world".as_slice();
+        let reader_len = reader.len();
+        let blob_hash = store
+            .write_object(ObjectType::Blob, &mut reader, reader_len)
+            .unwrap();
+        let entry = tree::TreeEntry::new(100644, blob_hash.hash, "test.txt".to_string(), 11);
+        let tree = tree::Tree {
+            entries: vec![entry],
+        };
+
+        let tree_hash = store
+            .write_object(
+                ObjectType::Tree,
+                &mut tree.to_bytes().as_slice(),
+                tree.to_bytes().len(),
+            )
+            .unwrap();
+
+        let root_tree_entry = tree::TreeEntry::new(
+            40000,
+            tree_hash.hash,
+            "root".to_string(),
+            tree.to_bytes().len(),
+        );
+        let root_tree = tree::Tree {
+            entries: vec![root_tree_entry],
+        };
+        let root_tree_hash = store
+            .write_object(
+                ObjectType::Tree,
+                &mut root_tree.to_bytes().as_slice(),
+                root_tree.to_bytes().len(),
+            )
+            .unwrap();
+
+        let result = store
+            .load_tree_recursive(&root_tree_hash.hash, path::PathBuf::new())
+            .unwrap();
+        assert_eq!(result.entries[0].filename, "test.txt");
     }
 
     fn build_store() -> (Store, TempDir) {

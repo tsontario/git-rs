@@ -16,9 +16,9 @@ pub fn call(config: &CliConfig, args: &LsTreeArgs) -> anyhow::Result<()> {
 
     let object = store.load_object(&args.obj_hash)?;
     match object {
-        Object::Tree(tree) => {
+        Object::Tree(mut tree) => {
             if args.recursive {
-                store.load_tree_recursive(&args.obj_hash, std::path::PathBuf::new())?;
+                tree = store.load_tree_recursive(&args.obj_hash, std::path::PathBuf::new())?;
             }
             for entry in tree.entries {
                 println!("{}", entry);

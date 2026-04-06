@@ -5,12 +5,9 @@ use assert_cmd::Command;
 #[test]
 fn test_cat_file_missing_required_arg() {
     let (tempdir, _tempfile, _git_dir) = common::init_simple_git_dir().unwrap();
-    Command::cargo_bin("my-git").unwrap()
-        .args([
-            "-C",
-            tempdir.path().to_str().unwrap(),
-            "cat-file"
-        ])
+    Command::cargo_bin("my-git")
+        .unwrap()
+        .args(["-C", tempdir.path().to_str().unwrap(), "cat-file"])
         .assert()
         .failure();
 }

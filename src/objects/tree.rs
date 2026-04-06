@@ -13,6 +13,7 @@ pub struct TreeEntry {
     pub filename: String,
     pub hash: String,
     pub size: usize,
+    path_prefix: path::PathBuf,
 }
 
 pub struct TreeParser {
@@ -77,15 +78,7 @@ impl TreeParser {
         let size = null_pos + 21;
 
         // null_pos + 22 is the offset of the next entry
-        Ok((
-            TreeEntry {
-                mode,
-                hash,
-                size,
-                filename: expanded_filename,
-            },
-            size,
-        ))
+        Ok((TreeEntry::new(mode, hash, expanded_filename, size), size))
     }
 
     /// Prefixes the entry with path_prefix, if path_prefix is not None.
@@ -127,6 +120,20 @@ impl Mode {
 }
 
 impl TreeEntry {
+    pub fn new(mode: u32, hash: String, filename: String, size: usize) -> Self {
+        TreeEntry {
+            mode,
+            hash,
+            filename,
+            size,
+            path_prefix: path::PathBuf::new(),
+        }
+    }
+
+    pub fn set_prefix(&mut self, path_prefix: &path::PathBuf) {
+        self.path_prefix = self.path_prefix.join(path_prefix);
+    }
+
     pub(crate) fn object_type(&self) -> ObjectType {
         Mode::from_u32(self.mode).unwrap().object_type()
     }
@@ -134,13 +141,14 @@ impl TreeEntry {
 
 impl Display for TreeEntry {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let filepath = self.path_prefix.join(&self.filename);
         write!(
             f,
             "{:06} {} {}\t{}",
             self.mode,
             self.object_type(),
             self.hash,
-            self.filename
+            filepath.display(),
         )
     }
 }
