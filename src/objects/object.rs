@@ -65,7 +65,8 @@ impl Object {
                 Ok(Object::Blob(blob))
             }
             ObjectType::Tree => {
-                let entries = tree::TreeEntry::parse(&buf[null_pos + 1..])?;
+                let parser = tree::TreeParser::new(&buf[null_pos + 1..], None);
+                let entries = parser.parse()?;
                 let tree = tree::Tree { entries };
                 Ok(Object::Tree(tree))
             }

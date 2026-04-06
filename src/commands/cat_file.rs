@@ -1,6 +1,6 @@
 use crate::commands::CliConfig;
 use crate::objects;
-use crate::objects::object::{ObjectMeta};
+use crate::objects::object::ObjectMeta;
 
 #[derive(clap::Args, Clone)]
 #[command(group = clap::ArgGroup::new("mode").required(true))]

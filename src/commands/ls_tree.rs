@@ -1,7 +1,6 @@
 use crate::commands::CliConfig;
-use crate::objects::tree;
-use flate2::read::ZlibDecoder;
-use std::io::Read;
+use crate::objects::object::Object;
+use crate::objects::store;
 
 #[derive(clap::Args, Clone)]
 pub struct LsTreeArgs {
@@ -13,23 +12,19 @@ pub struct LsTreeArgs {
 }
 
 pub fn call(config: &CliConfig, args: &LsTreeArgs) -> anyhow::Result<()> {
-    let (prefix, hash) = args.obj_hash.split_at(2);
-    let git_path = &config.git_dir;
-    let obj_path = git_path.join("objects").join(prefix).join(hash);
+    let store = store::Store::new(config.git_dir.to_path_buf())?;
 
-    let mut decoder = ZlibDecoder::new(std::fs::File::open(obj_path)?);
-    let mut buf = Vec::new();
-    decoder.read_to_end(&mut buf)?;
-
-    let mut entries: Vec<tree::TreeEntry> = Vec::new();
-    if args.recursive {
-        // entries = tree::TreeEntry::parse_recursive(&buf, PathBuf::from(""))?;
-    } else {
-        entries = tree::TreeEntry::parse(&buf)?;
-    }
-
-    for entry in entries {
-        println!("{}", entry);
+    let object = store.load_object(&args.obj_hash)?;
+    match object {
+        Object::Tree(tree) => {
+            if args.recursive {
+                store.load_tree_recursive(&args.obj_hash, std::path::PathBuf::new())?;
+            }
+            for entry in tree.entries {
+                println!("{}", entry);
+            }
+        }
+        _ => return Err(anyhow::anyhow!("Expected tree object")),
     }
 
     Ok(())
